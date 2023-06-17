@@ -9,9 +9,19 @@
                 ; the high byte of a 16-bit unsigned cycle count.
                 ;
                 ; The routine (including the calling 'jsr' instruction) will
-                ; consume the specified amount of CPU clock cycles.
+                ; consume the specified number of CPU clock cycles.
                 ;
-                ; The routine preserves all registers, including processor flags.
+                ; For the cycle count consumption to be accurate, it is of course
+                ; assumed that the code is not interrupted while executing.
+                ;
+                ; The routine has the following nice properties:
+                ;
+                ;   - It preserves all registers and processor flags.
+                ;   - It does not use memory outside of the 6502 stack.
+                ;   - It is fully re-entrant, and is safe to use in interrupts.
+                ;   - It is relocatable. All jumps are implemented as branches.
+                ;
+                ; The code size is currently 91 bytes.
                 ;
                 ; The minimum number of clock cycles that can be specified as a
                 ; delay is 56. Behavior for values below 56 is undefined.
@@ -53,7 +63,7 @@ short_delay:    ; This is the code path taken if a delay count of <= 255 cycles 
                 ; Compensate for the overhead in the 'short_delay' code path.
                 ;
                 ; We subtract 48 to ensure that, in case the requested number of delay cycles is 56,
-                ;   register X is 1 (the minimum value that works) when entering the "loop8" loop below.
+                ;   register X is 1 (the minimum value that works) when entering the "s_loop8" loop below.
 
                 sec                 ; [2] 
                 sbc     #48         ; [2] 
@@ -93,9 +103,9 @@ s_burn3:        bne s_loop8         ; [Z=0: 3, Z=1: 2] When leaving the loop, X 
                 ; The X register is now zero, as it was when entering the 'short_delay' code path.
                 ; Restore the register and processor flags, then return to the caller.
 
-s_restore:      pla                 ; [4] Restore A register.
-                plp                 ; [4] Restore processor status flags.
-                rts                 ; [6] All done.
+sl_restore:     pla                 ; [4] Restore the A register.
+                plp                 ; [4] Restore the processor status flags.
+                rts                 ; [6] All done. Return to caller.
 
 long_delay:     ; This is the code path taken if a delay count of >= 256 cycles is requested.
                 ;
@@ -194,8 +204,8 @@ l_burn3:        bne     l_loop8     ; [Z=0: 3, Z=1: 2]
                 ; We join up with the 'short_delay' code path the restore the A register and processor
                 ;   flags to save one byte of code.
 
-                pla                 ; [4] Restore X register.
-                tax                 ; [4] X will always be unequal to zero.
-                bne     s_restore   ; [3] Restore A register and processor flags.
+                pla                 ; [4] Restore the X register.
+                tax                 ; [4] X will always be unequal to zero, so we can use "bne" to jump.
+                bne     sl_restore  ; [3] Restore the A register and processor flags.
 
                 .endscope
