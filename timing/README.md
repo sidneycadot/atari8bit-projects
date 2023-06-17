@@ -35,3 +35,8 @@ NOTE: we can measure (CLK/1000) directly by joining two POKEY channels,
 30 POKE 53760,237
 40 POKE 53762,1
 50 STOP
+
+VCOUNT
+------
+
+VCOUNT returns values 0 to 155.
