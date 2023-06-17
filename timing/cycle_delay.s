@@ -53,9 +53,9 @@ s_div4done:     lsr                 ; [2] Divide A by 2.
                 bcs     s_div8done  ; [C=0: 0, C=1: 3]
 
 s_div8done:     tax                 ; [2] Load number of 8-cycle loops to execute.
-s_loop8:        dex                 ; [2] Spend 8 cycles.
-                bne s_burn3         ; [2]
-s_burn3:        bne s_loop8         ; [2] When leaving the loop, X will be zero (as it originally was).
+s_loop8:        dex                 ; [2] Spend 8 cycles (assuming X != 1 on entry, otherwise 6).
+                bne s_burn3         ; [Z=0: 3, Z=1: 2]
+s_burn3:        bne s_loop8         ; [Z=0: 3, Z=1: 2] When leaving the loop, X will be zero (as it originally was).
 
 s_restore:      pla                 ; [4] Restore A register.
                 plp                 ; [4] Restore processor status flags.
@@ -108,9 +108,9 @@ l_div4done:     lsr                 ; [2] Divide A by 2.
                 bcs     l_div8done  ; [C=0: 0, C=1: 3]
 
 l_div8done:     tax                 ; [2] Load number of 8-cycle loops to execute.
-l_loop8:        dex                 ; [2] Spend 8 cycles.
-                bne     l_burn3     ; [2]
-l_burn3:        bne     l_loop8     ; [2] When leaving the loop, X will be zero.
+l_loop8:        dex                 ; [2] Spend 8 cycles (assuming X != 1 on entry, otherwise 6).
+                bne     l_burn3     ; [Z=0: 3, Z=1: 2]
+l_burn3:        bne     l_loop8     ; [Z=0: 3, Z=1: 2] When leaving the loop, X will be zero.
 
                 pla                 ; [4] Restore X register.
                 tax                 ; [4] X will always be unequal to zero.
