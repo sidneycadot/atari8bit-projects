@@ -19,7 +19,7 @@
                 ; Example
                 ; -------
                 ;
-                ; Three istructions that together take precisely 10,000 cycles:
+                ; Three instructions that together take precisely 10,000 cycles:
                 ;
                 ;           lda #<9996      ; 2 cycles.
                 ;           ldx #>9996      ; 2 cycles.
