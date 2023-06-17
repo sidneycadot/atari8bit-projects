@@ -41,8 +41,8 @@
 
 cycle_delay:    .scope
 
-                php                 ; [3] Save processor status flags.
-                pha                 ; [3] Save A register.
+                php                 ; [3] Save the processor status flags.
+                pha                 ; [3] Save the A register.
 
                 cpx     #0          ; [2] If the specified delay count exceeds 255,
                 bne     long_delay  ; [2]   jump to "long_delay" for further processing.
@@ -69,7 +69,7 @@ short_delay:    ; This is the code path taken if a delay count of <= 255 cycles 
                 sbc     #48         ; [2] 
 
                 ; Next thing to do: burn the number of cycles currently contained in the A register.
-                ; This value should be in the range 8 .. 255 at this point for the code below to work as expected.
+                ; This value should be in the range 8 .. 255 at this point for the code below to work as intended.
                 ;
                 ; We divide the remaining cycle count by 8 by shifting the least-significant bit out
                 ;   of the A register three times. For each bit that we shift out, we will burn
@@ -94,14 +94,14 @@ s_div4done:     lsr                 ; [2] Divide A by 2.
                 ; Execute a number of loops that corresponds to the remaining delay count divided by eight.
                 ; Each loop traversal (except the last) takes precisely eight clock cycles.
 
-s_div8done:     tax                 ; [2] Load the number of 8-cycle loops to execute.
+s_div8done:     tax                 ; [2] Load the number of 8-cycle loops to execute into the X register.
 
 s_loop8:        dex                 ; [2] Burn 8 cycles if X != 1 at the start of the loop, else 6 cycles.
                 bne s_burn3         ; [Z=0: 3, Z=1: 2]
-s_burn3:        bne s_loop8         ; [Z=0: 3, Z=1: 2] When leaving the loop, X will be zero (as it originally was).
+s_burn3:        bne s_loop8         ; [Z=0: 3, Z=1: 2]
 
-                ; The X register is now zero, as it was when entering the 'short_delay' code path.
-                ; Restore the register and processor flags, then return to the caller.
+                ; The X register is now zero, just as it was when entering the 'short_delay' code path.
+                ; Restore the A register and the processor flags, then return to the caller.
 
 sl_restore:     pla                 ; [4] Restore the A register.
                 plp                 ; [4] Restore the processor status flags.
@@ -109,33 +109,33 @@ sl_restore:     pla                 ; [4] Restore the A register.
 
 long_delay:     ; This is the code path taken if a delay count of >= 256 cycles is requested.
                 ;
-                ; When we get here, the processor flags and the A register contents have already been saved on
-                ;   the stack, and we know that register X is not equal to 0.
-                ; We still need to save register X on the stack.
+                ; When we get here, the processor flags and the A register value have already been saved on
+                ;   the stack, and we know that the X register is not equal to 0.
+                ; We still need to save the X register on the stack.
                 ;
                 ; This code is not highly critical in terms of efficiency, since the entire point of this code
-                ; path is to burn a considerable amount of clock cycles (at least 256) anyway.
+                ; path is to burn a considerable number of clock cycles (at least 256) anyway.
 
-                txa                 ; [2] Save X on the stack.
+                txa                 ; [2] Save the X register on the stack.
                 pha                 ; [3]
 
                 ; Now that both A and X are saved, we need to get them back to their original values.
                 ; This is surprisingly tricky, since normally all stack access goes via the A register.
                 ; The solution is to do direct access into page one (the 6502 stack page).
 
-                tsx                 ; [2] Stack pointer to X register.
-                inx                 ; [2] Increment X twice to point to saved A register.
+                tsx                 ; [2] Copy the stack pointer to the X register.
+                inx                 ; [2] Increment X twice to point to the saved A register value.
                 inx                 ; [2]
-                lda     $100,x      ; [4] Load original value of A.
+                lda     $100,x      ; [4] Load original value of the A register.
                 pha                 ; [3] Push it onto the stack.
-                dex                 ; [2] Decrement to point to saved X register.
-                lda     $100,x      ; [4] Load original value of X.
+                dex                 ; [2] Decrement to point to the saved X register value.
+                lda     $100,x      ; [4] Load original value of the X register.
                 tax                 ; [2] X is now its original value as retrieved from the stack.
                 pla                 ; [4] A is now its original value as retrieved from the stack.
 
                 ; Compensate for the overhead in the 'long_delay' code path.
                 ;
-                ; The value 93 ensures that the entire 'cycle_delay' routine consumes precisely
+                ; The subtracted value 93 ensures that the entire 'cycle_delay' routine consumes exactly
                 ;   the requested number of cycles when at least 256 delay samples are requested.
                 ;
                 ; Note that the 16-bit subtraction is implemented in such a way that it consumes the
@@ -149,9 +149,9 @@ l_q1:           bcs     l_bigloop   ; [C=0: 2, C=1: 3]
 
                 ; The loop that follows burns off 15 clock cycles per loop traversal.
                 ; During each traversal we subtract 15 from the count of cycles remaining to be burnt.
-                ; The loop ends when X (the high byte of the 16-bit delay count) is zero.
+                ; The loop ends when the X register (the high byte of the 16-bit delay count) is zero.
                 ;
-                ; Note that it is possible for register X to be already zero when we enter the loop;
+                ; Note that it is possible for the X register to be already zero when we enter the loop;
                 ;   in fact the combined value of (A, X) can be as low as 163 when we get here.
                 ; If this happens, we still subtract 15 cycles. This is not a problem since the code
                 ;   that follows will handle any value in the range 8 .. 255 just fine.
@@ -161,7 +161,7 @@ l_bigloop:      sec                 ; [2] Enter a 15-cycle loop, subtracting 15 
                 bcs     l_q2        ; [C=0: 2, C=1: 3]
 l_q2:           bcs     l_skip_dex  ; [C=0: 2, C=1: 3]
                 dex                 ; [C=0: 2, C=1: 0]
-l_skip_dex:     cpx     #0          ; [2] We're done if X is zero.
+l_skip_dex:     cpx     #0          ; [2] We're done if the X register is zero.
                 bne     l_bigloop   ; [Z=0: 3, Z=1: 2]
 
                 ; The remainder of this code is nearly identical to the code in the 'short_delay' path;
@@ -169,7 +169,7 @@ l_skip_dex:     cpx     #0          ; [2] We're done if X is zero.
                 ;   is not necessary in the 'short_delay' code path.
 
                 ; Next thing to do: burn the number of cycles currently contained in the A register.
-                ; This value should be in the range 8 .. 255 at this point for the code below to work as expected.
+                ; This value should be in the range 8 .. 255 at this point for the code below to work as intended.
                 ;
                 ; We divide the remaining cycle count by 8 by shifting the least-significant bit out
                 ;   of the A register three times. For each bit that we shift out, we will burn
@@ -194,7 +194,7 @@ l_div4done:     lsr                 ; [2] Divide A by 2.
                 ; Execute a number of loops that corresponds to the remaining delay count divided by eight.
                 ; Each loop traversal (except the last) takes precisely eight clock cycles.
 
-l_div8done:     tax                 ; [2] Load the number of 8-cycle loops to execute.
+l_div8done:     tax                 ; [2] Load the number of 8-cycle loops to execute into the X register.
 
 l_loop8:        dex                 ; [2] Burn 8 cycles if X != 1 at the start of the loop, else 6 cycles.
                 bne     l_burn3     ; [Z=0: 3, Z=1: 2]
