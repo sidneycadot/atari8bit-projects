@@ -1,0 +1,9 @@
+
+memory {
+    RAM:   start = $1000, size = 1024, file = %O;
+}
+
+segments {
+    bootcode : load = RAM;
+    CODE     : load = RAM;
+}

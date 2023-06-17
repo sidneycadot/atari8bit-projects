@@ -35,18 +35,35 @@ start:          lda #0
                 sta NMIEN
                 sta DMACTL
 
-                CYCLES1 = 10000
-                CYCLES2 = 32760 - CYCLES1 - 23
+                lda     PACTL   ; Set bit 2 of PACTL to zero.
+                and     #$FB    ; This makes PORTA into a direction register.
+                sta     PACTL
+
+                lda     #$FF    ; Configure all PORTA lines as DIGITAL OUTPUT.
+                sta     PORTA
+
+                lda     PACTL   ; Set bit 2 of PACTL to one.
+                ora     #$04    ; This makes PORTA into a DOUT register.
+                sta     PACTL
+
+                CYCLES1 = 16361
+                CYCLES2 = 32760 - CYCLES1 - 38
 
 LOOP:           lda     #34         ; [2]
                 sta     COLBK       ; [4]
+                lda     #255        ; [2]
+                sta     PORTA       ; [4]
 
                 lda     #<CYCLES1   ; [2]
                 ldx     #>CYCLES1   ; [2]
                 jsr     cycle_delay ; [-]
 
-                lda     #202        ; [2]
+                jmp    INLOOP       ; [3]
+                
+INLOOP:         lda     #202        ; [2]
                 sta     COLBK       ; [4]
+                lda     #0          ; [2]
+                sta     PORTA       ; [4]
 
                 lda     #<CYCLES2   ; [2]
                 ldx     #>CYCLES2   ; [2]
