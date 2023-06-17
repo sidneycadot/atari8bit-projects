@@ -58,7 +58,7 @@ LOOP:           lda     #34         ; [2]
                 ldx     #>CYCLES1   ; [2]
                 jsr     cycle_delay ; [-]
 
-                jmp    INLOOP       ; [3]
+                jmp     INLOOP      ; [3]
                 
 INLOOP:         lda     #202        ; [2]
                 sta     COLBK       ; [4]
