@@ -53,10 +53,12 @@ start:          lda     #0
                 ora     #$04        ; This makes PORTA into a DOUT register.
                 sta     PACTL
 
-                sta     WSYNC
+HORIZONTAL:     .scope
 
                 CYCLES1 = 156 * 105 - 16
-                CYCLES2 = 156 * 105 - 19
+                CYCLES2 = 156 * 105 - 25
+
+                jsr     SYNC
 
 RED:            lda     #34         ; [2]
                 sta     COLBK       ; [4]
@@ -76,4 +78,61 @@ YELLOW:         lda     #202        ; [2]
                 ldx     #>CYCLES2   ; [2]
                 jsr     cycle_delay ; [-]
 
-                jmp     RED         ; [3]
+                lda     CONSOL      ; [3]
+                and     #1          ; [2]
+                bne     RED         ; [3]
+
+                .endscope
+
+VERTICAL:      .scope
+
+                CYCLES1 = 1 * 105 - 16
+                CYCLES2 = 1 * 105 - 25
+
+                jsr SYNC
+
+RED:            lda     #34         ; [2]
+                sta     COLBK       ; [4]
+                lda     #255        ; [2]
+                sta     PORTA       ; [4]
+
+                lda     #<CYCLES1   ; [2]
+                ldx     #>CYCLES1   ; [2]
+                jsr     cycle_delay ; [-]
+
+YELLOW:         lda     #202        ; [2]
+                sta     COLBK       ; [4]
+                lda     #0          ; [2]
+                sta     PORTA       ; [4]
+
+                lda     #<CYCLES2   ; [2]
+                ldx     #>CYCLES2   ; [2]
+                jsr     cycle_delay ; [-]
+
+                lda     CONSOL      ; [3]
+                and     #2          ; [2]
+                bne     RED         ; [3]
+                beq     HORIZONTAL
+
+                .endscope
+
+SYNC:           .scope
+
+L1:             lda     VCOUNT
+                cmp     #10
+                bne     L1
+                sta     WSYNC
+
+L2:             lda     VCOUNT
+                cmp     #20
+                bne     L2
+                sta     WSYNC
+
+L3:             lda     VCOUNT
+                cmp     #30
+                bne     L3
+                sta     WSYNC
+
+                rts
+
+                .endscope
