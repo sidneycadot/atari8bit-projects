@@ -60,7 +60,7 @@ HORIZONTAL:     .scope
 
                 jsr     SYNC
 
-RED:            lda     #34         ; [2]
+RED:            lda     #14         ; [2]
                 sta     COLBK       ; [4]
                 lda     #255        ; [2]
                 sta     PORTA       ; [4]
@@ -91,7 +91,7 @@ VERTICAL:      .scope
 
                 jsr SYNC
 
-RED:            lda     #34         ; [2]
+RED:            lda     #14         ; [2]
                 sta     COLBK       ; [4]
                 lda     #255        ; [2]
                 sta     PORTA       ; [4]
