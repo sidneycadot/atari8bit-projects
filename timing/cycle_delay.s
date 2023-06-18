@@ -70,8 +70,9 @@ short_delay:    ; This is the code path taken if a delay count of 38 <= AX <= 25
 
                 sbc     #30         ; [2]
 
-delay_a_reg:    ; Burn the number of cycles currently specified in the A register.
-                ; This value should be in the range 8 .. 255 here for the code below to work as intended.
+delay_a_reg:    ; Burn the number of cycles currently specified in the A register, plus 18 cycles.
+                ; The value in register A should be in the range 8 .. 255 here for the code below
+                ;   to work as intended.
                 ;
                 ; We divide the remaining cycle count in A by 8, by shifting the least-significant bit
                 ;   out of the A register three times. For each bit that we shift out, we will burn
