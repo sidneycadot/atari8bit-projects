@@ -24,7 +24,7 @@
                 ;   - It is fully re-entrant, and is safe to use in interrupts.
                 ;   - The A and X registers are both zero upon return.
                 ;
-                ; The code size is currently 48 bytes.
+                ; The code size is currently 47 bytes.
                 ;
                 ; The minimum number of clock cycles that can be specified as a
                 ; delay is 38. Behavior for values below 38 is undefined.
@@ -104,14 +104,16 @@ long_delay:     ; This is the code path taken if a delay count of >= 256 cycles 
 
                 ; Compensate for the overhead in the 'long_delay' code path.
                 ;
-                ; The subtracted value 15 ensures that the entire 'cycle_delay' routine consumes
+                ; The subtracted value 13 ensures that the entire 'cycle_delay' routine consumes
                 ;   the correct number of cycles when at least 256 delay cycles are requested.
+                ;
+                ; We need not set the carry, as we are sure it is already set, because the last instruction
+                ; that influences the carry was a "cpx #0".
                 ;
                 ; Note that the 16-bit subtraction is implemented in such a way that it consumes the
                 ;   same number of clock cycles (10) whether a "borrow" happens or not.
 
-                sec                 ; [2]
-                sbc     #15         ; [2]
+                sbc     #13         ; [2]
                 bcs     l_q1        ; [C=0: 2, C=1: 3]
 l_q1:           bcs     l_bigloop   ; [C=0: 2, C=1: 3]
                 dex                 ; [C=0: 2, C=1: 0]
@@ -125,8 +127,8 @@ l_q1:           bcs     l_bigloop   ; [C=0: 2, C=1: 3]
                 ; If this happens, we still subtract 15 cycles. This is not a problem since the code
                 ;   that follows will handle any value in the range 38 .. 255 just fine.
 
-                sec                 ; [2] Enter a 15-cycle loop, subtracting 15 cycles from (A, X) as we go.
-l_bigloop:      sbc     #15         ; [2]
+l_bigloop:      sec                 ; [2] Enter a 15-cycle loop, subtracting 15 cycles from (A, X) as we go.
+                sbc     #15         ; [2]
                 bcs     l_q2        ; [C=0: 2, C=1: 3]
 l_q2:           bcs     l_skip_dex  ; [C=0: 2, C=1: 3]
                 dex                 ; [C=0: 2, C=1: 0]

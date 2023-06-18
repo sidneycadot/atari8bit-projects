@@ -31,9 +31,9 @@ init:           rts
 
                 .code
 
-start:          lda #0
-                sta NMIEN
-                sta DMACTL
+start:          lda     #0
+                sta     NMIEN
+                sta     DMACTL
 
                 lda     PACTL   ; Set bit 2 of PACTL to zero.
                 and     #$FB    ; This makes PORTA into a direction register.
@@ -46,8 +46,8 @@ start:          lda #0
                 ora     #$04    ; This makes PORTA into a DOUT register.
                 sta     PACTL
 
-                CYCLES1 = 156 * 105 - 16
-                CYCLES2 = 156 * 105 - 19
+                CYCLES1 = 1 * 105 - 16
+                CYCLES2 = 5 * 105 - 19
 
 RED:            lda     #34         ; [2]
                 sta     COLBK       ; [4]
