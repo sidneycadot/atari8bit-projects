@@ -14,20 +14,21 @@
                 ; For the cycle count consumption to be accurate, it is of course
                 ;   assumed that the code is not interrupted while executing.
                 ;
-                ; IMPORTANT: This routine only works correctly if it starts at an
-                ;    address of the form $xxe7 .. $xxeb. This is because it relies
-                ;    on the fact that the "loop8" branch crosses a page boundary.
+                ; *** IMPORTANT *** : This routine only works correctly if it starts
+                ;   on an address of the form $xxe7 .. $xxeb. This is because it
+                ;   relies on the fact that the "loop8" branch crosses a page
+                ;   boundary for exact timing.
                 ;
-                ; The routine has the following properties:
+                ; The routine has the following behavioral properties:
                 ;
                 ;   - It does not use memory outside of the 6502 stack.
                 ;   - It is fully re-entrant, and is safe to use in interrupts.
                 ;   - The A and X registers are both zero upon return.
                 ;
-                ; The code size is currently 47 bytes.
+                ; The code size is currently 41 bytes.
                 ;
                 ; The minimum number of clock cycles that can be specified as a
-                ; delay is 38. Behavior for values below 38 is undefined.
+                ;   delay is 38. Behavior for values below 38 is not defined.
                 ;
                 ; Example
                 ; -------
@@ -40,10 +41,11 @@
 
                 .export cycle_delay
 
-                .segment "aligned_code"
+                .segment "page_aligned_code"
 
-                .align 256          ; This line and the next line ensure that the code is on an allowed address.
-                .res $e7            ; $e7 .. $eb will work, ensuring the 8-cycle loop branch crosses a page boundary.
+                .align 256          ; This line and the next line ensure that the code is on an allowed starting address.
+                .res $e7            ; Any value from the range $e7 .. $eb will work to ensure that the final branch
+                                    ;   instruction in the "s_loop8" loop crosses a page boundary.
 
 cycle_delay:    cpx     #0          ; [2] If the specified delay count exceeds 255,
                 bne     long_delay  ; [2]   jump to "long_delay" for further processing.
@@ -74,7 +76,7 @@ short_delay:    ; This is the code path taken if a delay count of <= 255 cycles 
                 ;   - For the 2nd bit shifted out, burn 2 more cycles if it is one, vs if it is zero.
                 ;   - For the 3rd bit shifted out, burn 4 more cycles if it is one, vs if it is zero.
 
-                lsr                 ; [2] Divide A by 2.
+lowbits:        lsr                 ; [2] Divide A by 2.
                 bcs     s_div2done  ; [C=0: 2, C=1: 3] If the bit shifted out is 1, burn an extra cycle.
 
 s_div2done:     lsr                 ; [2] Divide A by 2.
@@ -100,23 +102,7 @@ s_loop8:        sec                 ; [2] Burn 8 cycles if A != 1 at the start o
 long_delay:     ; This is the code path taken if a delay count of >= 256 cycles is requested.
                 ;
                 ; This code is not highly critical in terms of efficiency, since the entire point of this code
-                ; path is to burn a considerable number of clock cycles (at least 256) anyway.
-
-                ; Compensate for the overhead in the 'long_delay' code path.
-                ;
-                ; The subtracted value 13 ensures that the entire 'cycle_delay' routine consumes
-                ;   the correct number of cycles when at least 256 delay cycles are requested.
-                ;
-                ; We need not set the carry, as we are sure it is already set, because the last instruction
-                ; that influences the carry was a "cpx #0".
-                ;
-                ; Note that the 16-bit subtraction is implemented in such a way that it consumes the
-                ;   same number of clock cycles (10) whether a "borrow" happens or not.
-
-                sbc     #13         ; [2]
-                bcs     l_q1        ; [C=0: 2, C=1: 3]
-l_q1:           bcs     l_bigloop   ; [C=0: 2, C=1: 3]
-                dex                 ; [C=0: 2, C=1: 0]
+                ;   path is to burn a considerable number of clock cycles (at least 256) anyway.
 
                 ; The loop that follows burns off 15 clock cycles per loop traversal.
                 ; During each traversal we subtract 15 from the count of cycles remaining to be burnt.
@@ -135,7 +121,21 @@ l_q2:           bcs     l_skip_dex  ; [C=0: 2, C=1: 3]
 l_skip_dex:     cpx     #0          ; [2] We're done if the X register is zero.
                 bne     l_bigloop   ; [Z=0: 3, Z=1: 2]
 
-                ; The remaining cycles will be burnt in the 'short_delay' loop.
-                ; We can use a 'beq' to jump there.
+                ; Now X=0 and A has a number of cycles to burn.
+                ; A is a "high" value (at least 256 - 15).
 
-                beq     short_delay
+                ; Compensate for the overhead in the 'long_delay' code path.
+                ;
+                ; The subtracted value 7 ensures that the entire 'cycle_delay' routine consumes
+                ;   the correct number of cycles when at least 256 delay cycles are requested.
+                ;
+                ; We need not set the carry, as we are sure it is already set, because the last instruction
+                ;   that influences the carry was a "cpx #0".
+
+                sbc     #7
+
+                ; The remaining cycles will be burnt in the 'short_delay' loop.
+                ; We can use a 'bcs' to jump there, since the last 'sbc' is guaranteed not
+                ; to have caused a borrow.
+
+                bcs     short_delay
