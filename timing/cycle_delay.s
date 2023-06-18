@@ -89,8 +89,8 @@ s_div4done:     lsr                 ; [2] Divide A by 2.
                 ; Execute a number of loops that corresponds to the remaining delay count divided by eight.
                 ; Each loop traversal (except the last) takes precisely eight clock cycles.
 
-s_loop8:        sec                 ; [2] Burn 8 cycles if X != 1 at the start of the loop, else 6 cycles.
-                sbc     #1          ;
+s_loop8:        sec                 ; [2] Burn 8 cycles if A != 1 at the start of the loop, else 6 cycles.
+                sbc     #1          ; [2]
                 bne     s_loop8     ; [Z=0: 4, Z=1: 2]  *** IT IS CRITICAL THAT THIS BRANCH CROSSES A PAGE BOUNDARY ***
 
                 ; Return to the caller.
@@ -104,8 +104,8 @@ long_delay:     ; This is the code path taken if a delay count of >= 256 cycles 
 
                 ; Compensate for the overhead in the 'long_delay' code path.
                 ;
-                ; The subtracted value 15 ensures that the entire 'cycle_delay' routine consumes exactly
-                ;   the requested number of cycles when at least 256 delay samples are requested.
+                ; The subtracted value 15 ensures that the entire 'cycle_delay' routine consumes
+                ;   the correct number of cycles when at least 256 delay cycles are requested.
                 ;
                 ; Note that the 16-bit subtraction is implemented in such a way that it consumes the
                 ;   same number of clock cycles (10) whether a "borrow" happens or not.
@@ -121,7 +121,7 @@ l_q1:           bcs     l_bigloop   ; [C=0: 2, C=1: 3]
                 ; The loop ends when the X register (the high byte of the 16-bit delay count) is zero.
                 ;
                 ; Note that it is possible for the X register to be already zero when we enter the loop;
-                ;   in fact the combined value of (A, X) can be as low as 163 when we get here.
+                ;   in fact the combined value of (A, X) can be as low as 241 when we get here.
                 ; If this happens, we still subtract 15 cycles. This is not a problem since the code
                 ;   that follows will handle any value in the range 38 .. 255 just fine.
 
