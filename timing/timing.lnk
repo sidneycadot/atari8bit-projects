@@ -4,6 +4,7 @@ memory {
 }
 
 segments {
-    bootcode : load = RAM;
-    CODE     : load = RAM;
+    bootcode     : load = RAM;
+    CODE         : load = RAM;
+    aligned_code : load = RAM, align=128;
 }

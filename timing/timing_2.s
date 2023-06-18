@@ -17,7 +17,7 @@ NMIEN           := $D40E
                 .segment "bootcode"
 
 boot_sector:    .byte   0               ; The boot option byte is always zero.
-                .byte   2               ; 1 sector for the bootloader.
+                .byte   3               ; 1 sector for the bootloader.
                 .word   boot_sector     ; load address.
                 .word   init            ; initialization address (copied to DOSINI).
 
@@ -46,8 +46,8 @@ start:          lda #0
                 ora     #$04    ; This makes PORTA into a DOUT register.
                 sta     PACTL
 
-                CYCLES1 = 16361
-                CYCLES2 = 32760 - CYCLES1 - 38
+                CYCLES1 = 2 * 105 - 19
+                CYCLES2 = 2 * 105 - 19
 
 LOOP:           lda     #34         ; [2]
                 sta     COLBK       ; [4]
