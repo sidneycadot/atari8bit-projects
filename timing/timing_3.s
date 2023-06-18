@@ -5,6 +5,7 @@ CONSOL          := $D01F
 PORTA           := $D300
 PACTL           := $D302
 DMACTL          := $D400
+WSYNC           := $D40A
 VCOUNT          := $D40B
 NMIEN           := $D40E
 
@@ -26,12 +27,5 @@ init:           lda     #0
                 sta     NMIEN   ; Disable NMI interrupts (the only spontaneous interrupts on the Atari).
                 sta     DMACTL  ; Disable graphics DMA.
 
-                ;lda     #<1000
-                ;ldx     #>1000
-                ;jsr     cycle_delay
-
-LOOP:           ldx     VCOUNT
-
-
-                sta     WSYNC
+LOOP:           sta     WSYNC
                 lda     VCOUNT

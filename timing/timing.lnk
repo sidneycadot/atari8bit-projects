@@ -1,6 +1,6 @@
 
 memory {
-    RAM:   start = $1000, size = 1024, file = %O;
+    RAM:   start = $1000, size = 8192, file = %O;
 }
 
 segments {
