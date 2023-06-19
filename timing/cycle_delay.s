@@ -15,9 +15,9 @@
                 ; For the cycle count consumption to be accurate, it is assumed
                 ;   that the code is not interrupted while executing.
                 ;
-                ; *** IMPORTANT *** : This routine only works correctly if it starts
-                ;   on an address of the form $xxe7 .. $xxeb. This is because it
-                ;   relies on the fact that the "loop8" branch crosses a page
+                ; *** IMPORTANT *** : This routine only works correctly if it
+                ;   starts on an address of the form $xxe7 .. $xxeb. This is
+                ;   because it relies on the "loop8" branch crossing a page
                 ;   boundary, thus taking 4 clock cycles, for its timing.
                 ;
                 ; The routine has the following behavioral properties:
@@ -45,7 +45,7 @@
 
                 .segment "page_aligned_code"
 
-                ; This next two directives ensure that the code is on an allowed starting address.
+                ; The next two directives ensure that the code is on an allowed starting address.
 
                 .align  256         
                 .res    $e7         ; Must be $e7 .. $eb.
@@ -63,15 +63,6 @@ short_delay:    ; This is the code path taken for delay counts in the range [38 
                 ;   because the clock cycles spent in this code path directly determine the minimum
                 ;   delay count that the 'cycle_delay' routine can handle (currently, 38).
 
-                ; Compensate for the overhead in the 'short_delay' code path.
-                ;
-                ; We known that the carry is currently set, because the last instruction affecting
-                ;   the carry was the "cpx #0" above.
-                ;
-                ; We subtract 30 to ensure that, if the requested number of delay cycles is 38,
-                ;   register A will be 1 (the minimum value that works) when entering the "loop8"
-                ;   loop below.
-
                 ; Compensate for the fixed cycle cost of the short delay path, by subtracting
                 ; a constant from the current value of the A register.
                 ;
@@ -86,11 +77,14 @@ short_delay:    ; This is the code path taken for delay counts in the range [38 
                 ;
                 ;   A_after_sbc == A_before_sbc - subtract_constant         (2)
                 ;
-                ; This leads to:
+                ; Combining these leads to:
                 ;
                 ;   subtract_constant == 30                                 (3)
                 ;
-                ; So to make everything work, we need to subtract 30 from A here.
+                ; So to make everything work as intended, we need to subtract 30 from A here.
+                ;
+                ; We known that the carry is currently set, because the last instruction affecting
+                ;   the carry was the "cpx #0" above.
 
                 sbc     #30         ; [2]
 
@@ -131,17 +125,20 @@ loop8:          sec                 ; [2] Burn 8 cycles if A != 1 at the start o
 
 long_delay:     ; This is the code path taken for delay counts in the range [256 .. 65535].
                 ;
-                ; To accomplish the desired behavior is the number of delay cycles in AX is decreased
+                ; To accomplish the desired behavior, the number of delay cycles in AX is decreased
                 ;   by 9 in a loop that takes precisely 9 cycles, until AX becomes less than 256.
                 ; As soon as that happens, we rejoin the 'short_delay' code path to burn the remaining cycles.
 
                 ; The period-9 cycle-burning loop is written in a somewhat convoluted way to ensure that the
                 ;   loop takes exactly 9 cycles both in case a borrow happens, and when it doesn't.
                 ;
+                ; The loop ends when the X register (the high byte of the 16-bit delay count) becomes zero.
+                ;
+                ; With M being the number of "loop9" loop traversals (M >= 1), the total number of cycles
+                ;   taken is equal to 3 + 9 * M.
+                ;
                 ; We also want to guarantee that the carry flag is predicatable after execution of the loop.
                 ; The implementation below guarantees that the carry flag is 0 when exiting the loop.
-                ;
-                ; The loop ends when the X register (the high byte of the 16-bit delay count) becomes zero.
 
 loop9_long:     clc                 ; [2]
                 nop                 ; [2]
@@ -150,7 +147,7 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 dex                 ; [2]   Borrow occurred; we need to decrement X.
                 bne     loop9_short ; [2/3] If X has become zero, we're done with this loop.
 
-                ; Now the X register is 0 and the A register holds a number of cycles to burn.
+                ; Now the X register is 0 and the A register holds a remaining number of cycles to burn.
                 ; The value of A is at least 256 - 9 = 247.
 
                 ; Compensate for the fixed cycle cost of the long delay path, by subtracting
@@ -168,12 +165,12 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 ;
                 ;   A_after_sbc == A_before_sbc - subtract_constant                             (6)
                 ;
-                ; This leads to:
+                ; Combining these leads to:
                 ;
                 ;   subtract_constant == 39                                                     (7)
                 ;
-                ; So to make everything work, we need to subtract 39 from A here.
-
+                ; So to make everything work as intended, we need to subtract 39 from A here.
+                ;
                 ; Note that the carry flag is 0 when we get here, so we'll be subtracting 1
                 ;   more than the specified immediate argument.
 
