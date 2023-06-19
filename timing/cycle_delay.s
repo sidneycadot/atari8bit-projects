@@ -22,7 +22,8 @@
                 ;
                 ; The routine has the following behavioral properties:
                 ;
-                ;   - It does not use memory outside of the 6502 stack.
+                ;   - It can be run from RAM or ROM.
+                ;   - It does not use memory or stack space.
                 ;   - It is fully re-entrant and safe to use in interrupts.
                 ;   - The A and X registers are both zero upon return.
                 ;
@@ -51,22 +52,45 @@
 
                 ; Code starts here.
 
-cycle_delay:    cpx     #0          ; [2] If the delay count specified in AX exceeds 255,
-                bne     long_delay  ; [2]   jump to "long_delay" for further processing.
+cycle_delay:    cpx     #0          ; [2]    If the delay count specified in AX exceeds 255,
+                bne     long_delay  ; [2/4]    jump to "long_delay" for further processing.
+                                    ;        If taken, the branch takes 4 cycles as it crosses
+                                    ;          a page boundary.
 
-short_delay:    ; This is the code path taken if a delay count of 38 <= AX <= 255 cycles is desired.
+short_delay:    ; This is the code path taken for delay counts in the range [38 .. 255].
                 ;
-                ; This is the critical part of the 'cycle_delay' routine in terms of efficiency, because
-                ;   the clock cycles spent in this code path directly determine the minimum delay count
-                ;   that the 'cycle_delay' routine can handle (currently, 38).
+                ; This is the critical part of the 'cycle_delay' routine in terms of efficiency,
+                ;   because the clock cycles spent in this code path directly determine the minimum
+                ;   delay count that the 'cycle_delay' routine can handle (currently, 38).
 
                 ; Compensate for the overhead in the 'short_delay' code path.
                 ;
-                ; We known that the carry is currently set, because the last instruction influencing
+                ; We known that the carry is currently set, because the last instruction affecting
                 ;   the carry was the "cpx #0" above.
                 ;
-                ; We subtract 30 to ensure that, in case the requested number of delay cycles is 38,
-                ;   register A is 1 (the minimum value that works) when entering the "loop8" loop below.
+                ; We subtract 30 to ensure that, if the requested number of delay cycles is 38,
+                ;   register A will be 1 (the minimum value that works) when entering the "loop8"
+                ;   loop below.
+
+                ; Compensate for the fixed cycle cost of the short delay path, by subtracting
+                ; a constant from the current value of the A register.
+                ;
+                ; So far, we've spent 6 cycles on the calling 'jsr' instruction, plus 4 cycles to
+                ; get to this point. The 'sbc' instruction about to be executed will add another
+                ; 2 cycles. After that, the 'delay_a_reg' part of the routine will consume
+                ; (18 + A) clock cycles, given the value of the A register at that point.
+                ;
+                ; To determine the number of cycles we need to subtract, consider the following:
+                ;
+                ;   6 + 4 + 2 + (18 + A_after_sbc) == A_before_sbc          (1)
+                ;
+                ;   A_after_sbc == A_before_sbc - subtract_constant         (2)
+                ;
+                ; This leads to:
+                ;
+                ;   subtract_constant == 30                                 (3)
+                ;
+                ; So to make everything work, we need to subtract 30 from A here.
 
                 sbc     #30         ; [2]
 
@@ -105,13 +129,13 @@ loop8:          sec                 ; [2] Burn 8 cycles if A != 1 at the start o
 
                 rts                 ; [6] All done.
 
-long_delay:     ; This is the code path taken if a delay count AX >= 256 cycles is requested.
+long_delay:     ; This is the code path taken for delay counts in the range [256 .. 65535].
                 ;
                 ; To accomplish the desired behavior is the number of delay cycles in AX is decreased
                 ;   by 9 in a loop that takes precisely 9 cycles, until AX becomes less than 256.
                 ; As soon as that happens, we rejoin the 'short_delay' code path to burn the remaining cycles.
 
-                ; The period-9 cycle-burning loop is written in a somehwt convoluted way to ensure that the
+                ; The period-9 cycle-burning loop is written in a somewhat convoluted way to ensure that the
                 ;   loop takes exactly 9 cycles both in case a borrow happens, and when it doesn't.
                 ;
                 ; We also want to guarantee that the carry flag is predicatable after execution of the loop.
@@ -126,15 +150,32 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 dex                 ; [2]   Borrow occurred; we need to decrement X.
                 bne     loop9_short ; [2/3] If X has become zero, we're done with this loop.
 
-                ; Now X=0 and the A register holds a number of cycles to burn.
+                ; Now the X register is 0 and the A register holds a number of cycles to burn.
                 ; The value of A is at least 256 - 9 = 247.
 
-                ; Compensate for the overhead in the 'long_delay' code path.
+                ; Compensate for the fixed cycle cost of the long delay path, by subtracting
+                ; a constant from the current value of the A register.
                 ;
-                ; Subtract 39 from the A register to ensure that the entire 'cycle_delay' routine consumes
-                ;   the correct number of cycles when at least 256 delay cycles are requested.
+                ; In the following, let M be the number of traversals of the "loop9" loop that was
+                ;   just executed (M >= 1).
                 ;
-                ; The carry is guaranteed to be 0 here, so we're actually subtracting 39 from the A register.
+                ; We can then write three equations to relate the desired execution time of the
+                ;   routine, including the calling 'jsr', to the actual execution time:
+                ;
+                ;   6 + 2 + 4 + (9 * M + 3) + 2 + 4 + (18 + A_after_sbc) == cycles_requested    (4)
+                ;
+                ;   A_before_sbc == cycles_requested - 9 * M                                    (5)
+                ;
+                ;   A_after_sbc == A_before_sbc - subtract_constant                             (6)
+                ;
+                ; This leads to:
+                ;
+                ;   subtract_constant == 39                                                     (7)
+                ;
+                ; So to make everything work, we need to subtract 39 from A here.
+
+                ; Note that the carry flag is 0 when we get here, so we'll be subtracting 1
+                ;   more than the specified immediate argument.
 
                 sbc     #(39 - 1)   ; [2]
 
