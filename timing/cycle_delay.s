@@ -30,7 +30,7 @@
                 ; The code size is a modest 38 bytes.
                 ;
                 ; The minimum number of clock cycles that can be specified as a
-                ;   delay is 38. Behavior for values below 38 is not defined.
+                ;   delay is 34. Behavior for values below 34 is not defined.
                 ;
                 ; Example
                 ; -------
@@ -69,11 +69,11 @@ short_delay:    ; This is the code path taken for delay counts in the range [38 
                 ; So far, we've spent 6 cycles on the calling 'jsr' instruction, plus 4 cycles to
                 ; get to this point. The 'sbc' instruction about to be executed will add another
                 ; 2 cycles. After that, the 'delay_a_reg' part of the routine will consume
-                ; (18 + A) clock cycles, given the value of the A register at that point.
+                ; (22 + A) clock cycles, given the value of the A register at that point.
                 ;
                 ; To determine the number of cycles we need to subtract, consider the following:
                 ;
-                ;   6 + 4 + 2 + (18 + A_after_sbc) == A_before_sbc          (1)
+                ;   6 + 4 + 2 + (22 + A_after_sbc) == A_before_sbc          (1)
                 ;
                 ;   A_after_sbc == A_before_sbc - subtract_constant         (2)
                 ;
@@ -86,14 +86,12 @@ short_delay:    ; This is the code path taken for delay counts in the range [38 
                 ; We known that the carry is currently set, because the last instruction affecting
                 ;   the carry was the "cpx #0" above.
 
-                sbc     #30         ; [2]
+                sbc     #34         ; [2]
 
-delay_a_reg:    ; Burn the number of cycles currently specified in the A register, plus 18 cycles.
-                ; The value in register A should be in the range 8 .. 255 here for the code below
-                ;   to work as intended.
+delay_a_reg:    ; Burn the number of cycles currently specified in the A register, plus 22 cycles.
                 ;
-                ; We divide the remaining cycle count in A by 8, by shifting the least-significant bit
-                ;   out of the A register three times. For each bit that we shift out, we will burn
+                ; We divide the cycle count in A by 8, by shifting the least-significant bit out
+                ;   of the A register three times. For each bit that we shift out, we will burn
                 ;   more cycles if it is set to one:
                 ;
                 ;   - For the 1st bit shifted out, burn 1 more cycle  if it is one, vs if it is zero.
@@ -108,16 +106,16 @@ div2done:       lsr                 ; [2] Divide A by 2.
                 bcs     div4done    ; [C=0: 0, C=1: 3]
 
 div4done:       lsr                 ; [2] Divide A by 2.
-                bcc     loop8       ; [C=0: 3, C=1: 2] If the bit shifted out is 1, burn four extra cycles.
+                bcc     enter8      ; [C=0: 3, C=1: 2] If the bit shifted out is 1, burn four extra cycles.
                 nop                 ; [C=0: 0, C=1: 2]
-                bcs     loop8       ; [C=0: 0, C=1: 3]
+                bcs     enter8      ; [C=0: 0, C=1: 3]
 
                 ; Execute a number of loops that corresponds to the remaining delay count divided by eight.
                 ; Each loop traversal (except the last) takes precisely eight clock cycles.
 
 loop8:          sec                 ; [2] Burn 8 cycles if A != 1 at the start of the loop, else 6 cycles.
                 sbc     #1          ; [2]
-                bne     loop8       ; [Z=0: 4, Z=1: 2] *** CRITICAL: THIS BRANCH MUST CROSS A PAGE BOUNDARY ***
+enter8:         bne     loop8       ; [Z=0: 4, Z=1: 2] *** CRITICAL: THIS BRANCH MUST CROSS A PAGE BOUNDARY ***
 
                 ; Return to the caller.
 
@@ -125,8 +123,8 @@ loop8:          sec                 ; [2] Burn 8 cycles if A != 1 at the start o
 
 long_delay:     ; This is the code path taken for delay counts in the range [256 .. 65535].
                 ;
-                ; To accomplish the desired behavior, the number of delay cycles in AX is decreased
-                ;   by 9 in a loop that takes precisely 9 cycles, until AX becomes less than 256.
+                ; The number of delay cycles in AX is decreased by 9 in a loop that takes precisely 9 cycles,
+                ;   until AX becomes less than 256.
                 ; As soon as that happens, we rejoin the 'short_delay' code path to burn the remaining cycles.
 
                 ; The period-9 cycle-burning loop is written in a somewhat convoluted way to ensure that the
@@ -159,7 +157,7 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 ; We can then write three equations to relate the desired execution time of the
                 ;   routine, including the calling 'jsr', to the actual execution time:
                 ;
-                ;   6 + 2 + 4 + (9 * M + 3) + 2 + 4 + (18 + A_after_sbc) == cycles_requested    (4)
+                ;   6 + 2 + 4 + (9 * M + 3) + 2 + 4 + (22 + A_after_sbc) == cycles_requested    (4)
                 ;
                 ;   A_before_sbc == cycles_requested - 9 * M                                    (5)
                 ;
@@ -167,14 +165,14 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 ;
                 ; Combining these leads to:
                 ;
-                ;   subtract_constant == 39                                                     (7)
+                ;   subtract_constant == 43                                                     (7)
                 ;
                 ; So to make everything work as intended, we need to subtract 39 from A here.
                 ;
                 ; Note that the carry flag is 0 when we get here, so we'll be subtracting 1
                 ;   more than the specified immediate argument.
 
-                sbc     #(39 - 1)   ; [2]
+                sbc     #(43 - 1)   ; [2]
 
                 ; The remaining cycles will be burnt in the 'short_delay' code path.
                 ;
