@@ -1,27 +1,27 @@
 
-                .org $F0E7
+                       .org $FEDA
 
-LF0E7:          cpx  #0
-                bne  LF101
-                sbc  #30
-LF0ED:          lsr
-                bcs  LF0F0
-LF0F0:          lsr
-                bcs  LF0F5
-                bcs  LF0F5
-LF0F5:          lsr
-                bcc  LF0FB
-                nop
-                bcs  LF0FB
-LF0FB:          sec
-                sbc  #1
-                bne  LF0FB
-                rts
-LF101:          clc
-                nop
-LF103:          sbc  #8
-                bcs  LF101
-                dex
-                bne  LF103
-                sbc  #39
-                bcs  LF0ED
+FEDA:                  cpx  #0
+                       bne  FEEE
+                       sbc  #34
+FEE0:                  lsr
+                       bcs  FEE3
+FEE3:                  lsr
+                       bcc  FEE8
+                       bcs  FEE8
+FEE8:                  lsr
+                       bcc  FEFE
+                       nop
+                       bcs  FEFE
+FEEE:                  clc
+                       nop
+FEF0:                  sbc  #8
+                       bcs  FEEE
+                       dex
+                       bne  FEF0
+                       sbc  #40
+                       bcs  FEE0
+FEFB:                  sec
+                       sbc  #1
+FEFE:                  bne  FEFB
+                       rts
