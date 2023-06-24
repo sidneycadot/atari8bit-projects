@@ -53,7 +53,9 @@ start:          lda     #0
                 ora     #$04        ; This makes PORTA into a DOUT register.
                 sta     PACTL
 
-HORIZONTAL:     .scope
+                jmp     BIG_BARS    ; Comment this out to verify short-delay behavior.
+
+BIG_BARS:      .scope
 
                 CYCLES1 = 156 * 105 - 16
                 CYCLES2 = 156 * 105 - 25
@@ -81,10 +83,11 @@ YELLOW:         lda     #202        ; [2]
                 lda     CONSOL      ; [3]
                 and     #1          ; [2]
                 bne     RED         ; [3]
+                beq     SMALL_BARS
 
                 .endscope
 
-VERTICAL:      .scope
+SMALL_BARS:     .scope
 
                 CYCLES1 = 1 * 105 - 16
                 CYCLES2 = 1 * 105 - 25
@@ -112,7 +115,7 @@ YELLOW:         lda     #202        ; [2]
                 lda     CONSOL      ; [3]
                 and     #2          ; [2]
                 bne     RED         ; [3]
-                beq     HORIZONTAL
+                beq     BIG_BARS
 
                 .endscope
 

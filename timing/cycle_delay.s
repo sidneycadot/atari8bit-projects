@@ -16,7 +16,7 @@
                 ;   that the code is not interrupted while executing.
                 ;
                 ; *** IMPORTANT *** : This routine only works correctly if it
-                ;   starts on an address of the form $xxe7 .. $xxeb. This is
+                ;   starts on an address of the form $xxda or $xxdb. This is
                 ;   because it relies on the "loop8" branch crossing a page
                 ;   boundary, thus taking 4 clock cycles, for its timing.
                 ;
@@ -27,10 +27,10 @@
                 ;   - It is fully re-entrant and safe to use in interrupts.
                 ;   - The A and X registers are both zero upon return.
                 ;
-                ; The code size is a modest 38 bytes.
+                ; The code size is a modest 39 bytes.
                 ;
                 ; The minimum number of clock cycles that can be specified as a
-                ;   delay is 38. Behavior for values below 38 is not defined.
+                ;   delay is 34. Behavior for values below 34 is not defined.
                 ;
                 ; Example
                 ; -------
@@ -48,14 +48,12 @@
                 ; The next two directives ensure that the code is on an allowed starting address.
 
                 .align  256         
-                .res    $e7         ; Must be $e7 .. $eb.
+                .res    $da         ; Must be $da or $db.
 
                 ; Code starts here.
 
 cycle_delay:    cpx     #0          ; [2]    If the delay count specified in AX exceeds 255,
-                bne     long_delay  ; [2/4]    jump to "long_delay" for further processing.
-                                    ;        If taken, the branch takes 4 cycles as it crosses
-                                    ;          a page boundary.
+                bne     long_delay  ; [2/3]    jump to "long_delay" for further processing.
 
 short_delay:    ; This is the code path taken for delay counts in the range [38 .. 255].
                 ;
@@ -73,7 +71,7 @@ short_delay:    ; This is the code path taken for delay counts in the range [38 
                 ;
                 ; To determine the number of cycles we need to subtract, consider the following:
                 ;
-                ;   6 + 4 + 2 + (18 + A_after_sbc) == A_before_sbc          (1)
+                ;   6 + 4 + 2 + (22 + A_after_sbc) == A_before_sbc          (1)
                 ;
                 ;   A_after_sbc == A_before_sbc - subtract_constant         (2)
                 ;
@@ -86,11 +84,9 @@ short_delay:    ; This is the code path taken for delay counts in the range [38 
                 ; We known that the carry is currently set, because the last instruction affecting
                 ;   the carry was the "cpx #0" above.
 
-                sbc     #30         ; [2]
+                sbc     #34         ; [2]
 
-delay_a_reg:    ; Burn the number of cycles currently specified in the A register, plus 18 cycles.
-                ; The value in register A should be in the range 8 .. 255 here for the code below
-                ;   to work as intended.
+delay_a_reg:    ; Burn the number of cycles currently specified in the A register, plus 22 cycles.
                 ;
                 ; We divide the remaining cycle count in A by 8, by shifting the least-significant bit
                 ;   out of the A register three times. For each bit that we shift out, we will burn
@@ -108,20 +104,12 @@ div2done:       lsr                 ; [2] Divide A by 2.
                 bcs     div4done    ; [C=0: 0, C=1: 3]
 
 div4done:       lsr                 ; [2] Divide A by 2.
-                bcc     loop8       ; [C=0: 3, C=1: 2] If the bit shifted out is 1, burn four extra cycles.
+                bcc     enter8      ; [C=0: 3, C=1: 2] If the bit shifted out is 1, burn four extra cycles.
                 nop                 ; [C=0: 0, C=1: 2]
-                bcs     loop8       ; [C=0: 0, C=1: 3]
+                bcs     enter8      ; [C=0: 0, C=1: 3]
 
                 ; Execute a number of loops that corresponds to the remaining delay count divided by eight.
                 ; Each loop traversal (except the last) takes precisely eight clock cycles.
-
-loop8:          sec                 ; [2] Burn 8 cycles if A != 1 at the start of the loop, else 6 cycles.
-                sbc     #1          ; [2]
-                bne     loop8       ; [Z=0: 4, Z=1: 2] *** CRITICAL: THIS BRANCH MUST CROSS A PAGE BOUNDARY ***
-
-                ; Return to the caller.
-
-                rts                 ; [6] All done.
 
 long_delay:     ; This is the code path taken for delay counts in the range [256 .. 65535].
                 ;
@@ -159,7 +147,7 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 ; We can then write three equations to relate the desired execution time of the
                 ;   routine, including the calling 'jsr', to the actual execution time:
                 ;
-                ;   6 + 2 + 4 + (9 * M + 3) + 2 + 4 + (18 + A_after_sbc) == cycles_requested    (4)
+                ;   6 + 2 + 3 + (9 * M + 3) + 2 + 3 + (22 + A_after_sbc) == cycles_requested    (4)
                 ;
                 ;   A_before_sbc == cycles_requested - 9 * M                                    (5)
                 ;
@@ -167,14 +155,14 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 ;
                 ; Combining these leads to:
                 ;
-                ;   subtract_constant == 39                                                     (7)
+                ;   subtract_constant == 41                                                     (7)
                 ;
-                ; So to make everything work as intended, we need to subtract 39 from A here.
+                ; So to make everything work as intended, we need to subtract 41 from A here.
                 ;
                 ; Note that the carry flag is 0 when we get here, so we'll be subtracting 1
                 ;   more than the specified immediate argument.
 
-                sbc     #(39 - 1)   ; [2]
+                sbc     #(41 - 1)   ; [2]
 
                 ; The remaining cycles will be burnt in the 'short_delay' code path.
                 ;
@@ -182,3 +170,11 @@ loop9_short:    sbc     #(9 - 1)    ; [2]   Subtract 9 from the cycle count. (ca
                 ;   to have caused a borrow.
 
                 bcs     delay_a_reg ; [4] This branch takes 4 cycles as it crosses a page boundary.
+
+loop8:          sec                 ; [2] Burn 8 cycles if A != 1 at the start of the loop, else 6 cycles.
+                sbc     #1          ; [2]
+enter8:         bne     loop8       ; [Z=0: 4, Z=1: 2] *** CRITICAL: THIS BRANCH MUST CROSS A PAGE BOUNDARY ***
+
+                ; Return to the caller.
+
+                rts                 ; [6] All done.

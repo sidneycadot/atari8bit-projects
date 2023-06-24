@@ -5,6 +5,7 @@
 ; - Set PORTA as digital output.
 ; - Cycle through PORTA values.
 ; - Each full cycle will either take 20 cycles (START not pressed) or 21 cycles (START pressed).
+; - We can use this to measure the number of CPU cycles per second, by looking at the I/O pins.
 
 DOSVEC          := $0A
 COLBK           := $D01A
