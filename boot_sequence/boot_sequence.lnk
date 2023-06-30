@@ -1,0 +1,10 @@
+
+memory {
+    boot:   start = $4000, size = 128, file = %O;
+    hiram:  start = $4F80, size = 128;
+}
+
+segments {
+    boot_sector : load = boot;
+    program     : load = boot, run = hiram, define=yes;
+}
