@@ -1,7 +1,18 @@
 
 .PHONY : clean default
 
-default : timing_1.atr timing_2.atr timing_3.atr
+default : timing_1.atr timing_2.atr timing_3.atr cycle_delay_test.atr
+
+# ---------------------------------------------------------------
+
+cycle_delay_test.atr : cycle_delay_test.bin
+	./make_atr.py f:cycle_delay_test.bin cycle_delay_test.atr
+
+cycle_delay_test.bin : cycle_delay_test.o cycle_delay.o
+	ld65 -C timing.lnk $^ -o $@
+
+cycle_delay_test.o : cycle_delay_test.s
+	ca65 cycle_delay_test.s
 
 # ---------------------------------------------------------------
 
