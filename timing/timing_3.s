@@ -28,7 +28,7 @@ boot_sector:    .byte   0               ; The boot option byte is always zero.
 
 init:           lda     #0
                 sta     NMIEN   ; Disable NMI interrupts (the only spontaneous interrupts on the Atari).
-                sta     IRQEN   ; Disable IRQ interrupts..
+                sta     IRQEN   ; Disable IRQ interrupts.
                 sta     DMACTL  ; Disable graphics DMA.
 
                 ; Turn ROM into RAM.
